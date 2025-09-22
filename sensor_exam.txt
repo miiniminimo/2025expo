@@ -1,0 +1,12 @@
+{
+        "motionType": "fire_exit",
+        "category": "reference",
+        "sensorData": [
+            {"flex1": 0.1, "flex2": 0.2, ... "flex5": 0.4, "gyro_x": 0.4 ... "gyro_z": 0.3},
+            {"flex1": 0.4, "flex2": 0.6, ... "flex5": 0.3, "gyro_x": 0.2 ... "gyro_z": 0.1},
+            ...
+            {"flex1": 0.1, "flex2": 0.2, ... "flex5": 0.4, "gyro_x": 0.4 ... "gyro_z": 0.3},
+        ],
+        "ts": "2025-09-22T10:30:00.123Z",
+	"emp_no": "choi1234"
+    }
