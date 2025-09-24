@@ -42,18 +42,18 @@ class Employee(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="employees")
 
-    # ✅ 이제 NOT NULL
+    # 이제 NOT NULL
     emp_no = models.CharField(max_length=50)
 
-    name   = models.CharField(max_length=120)
-    dept   = models.CharField(max_length=120, blank=True)
-    phone  = models.CharField(max_length=50, blank=True)
-    email  = models.EmailField(blank=True)
+    name = models.CharField(max_length=120)
+    dept = models.CharField(max_length=120, blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    email = models.EmailField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at", "-id"]
-        # ✅ 회사+사번 유니크 보장
+        # 회사+사번 유니크 보장
         constraints = [
             models.UniqueConstraint(fields=["company", "emp_no"], name="uq_employee_company_empno")
         ]

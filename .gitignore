@@ -1,0 +1,9 @@
+# env 파일
+.env
+
+# 가상환경 폴더
+test/
+venv/
+
+# 가상환경 실행 파일
+activate.bat

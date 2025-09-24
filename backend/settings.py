@@ -11,20 +11,35 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import environ
+import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# 루트 디렉터리를 가르킴
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 환경 변수를 관리하는 env 객체를 만듬
+# 특히 DEBUG 변수는 bool 타입으로 다룰 것이고, 만약 값이 없으면 False를 기본으로 함
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+
+# .env 파일 경로 설정
+environ.Env.read_env(
+    env_file=os.path.join(BASE_DIR, ".env")
+)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l(3j!hpfds^3(4u!6_l_f5=#nk#yu1&9ri0&cwly%ovf7+8bei'
+# 나중에 물어볼 것
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DEBUG")
 
+# django에 접속할 수 있는 호스트 주소를 지정하는 목록
+# "*" 은 모든 주소에서의 접속을 허용하므로, 실제 운영시에는 서비스할 도메인 주소로 변경해야 함
 ALLOWED_HOSTS = ['*']
 
 
@@ -43,7 +58,7 @@ INSTALLED_APPS = [
     "organizations",   # 회사/사원
     "courses",         # 교육
     "enrollments",     # 수강
-    'sensor',
+    "ai"
 ]
 
 MIDDLEWARE = [
@@ -84,10 +99,10 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'glife',
-        'USER': 'root',
-        'PASSWORD': 'KDay_5099',
-        'HOST': '127.0.0.1',
+        'NAME': env("DATABASE_NAME"),
+        'USER': env("DATABASE_USER"),
+        'PASSWORD': env("DATABASE_PASSWORD"),
+        'HOST': env("DATABASE_HOST"),
         'PORT': '3306',
     }
 }
@@ -134,13 +149,20 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-#React 연결을 위한 
-CORS_ALLOW_ALL_ORIGINS = True
+# React 연결을 위한 설정
+
+# 모든 출처의 요청을 전부 허용하는 것을 막음
+CORS_ALLOW_ALL_ORIGINS = False
+
+# 다른 출처에서 요청을 보낼 때, 인증 정보(쿠키, 인증 헤더 등)를 포함하는 것을 허용
 CORS_ALLOW_CREDENTIALS = True
+
+# 어떤 출처를 허용할지 명시
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 
+# 데이터 변경 요청시 허용하는 출처 목록
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
 ]

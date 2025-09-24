@@ -3,6 +3,7 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Enrollment(models.Model):
+    # 열거형(status 필드에 사용됨)
     class Status(models.TextChoices):
         NOT_TAKEN = "NOT_TAKEN", "미수강"
         ENROLLED  = "ENROLLED", "수강중"
