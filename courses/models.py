@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from common.models import TimeStampedModel
 
+# MotionType에 대한 코스 정보
 class Course(TimeStampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # 동작 평가 기능과 연결함

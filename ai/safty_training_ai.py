@@ -49,8 +49,8 @@ def graph_sensor_data(data_df, title="Sensor Data", show_plot=True):
         plt.show()
 
 # 센서 데이터 다듬기(전처리)
-# 클라이언트로부터 받은 센서 데이터(딕셔너리)를 전처리해서 numpy 배열로 반환하는 함수
-def preprocess_sensor_data(raw_data_dicts):
+# 클라이언트로부터 받은 센서 데이터(딕셔너리)를 전처리해서 numpy 배열(다차원 배열)로 반환하는 함수
+def preprocess_sensor_data(raw_data_dicts) -> np.ndarray:
     # 처리할 데이터가 없으면 빈 배열 반환
     if not raw_data_dicts:
         return np.array([])
@@ -98,107 +98,64 @@ class MotionEvaluator:
     def __init__(self, reference_motion_name):
         # 동작 이름
         self.reference_motion_name = reference_motion_name
-        # 모델에서 모범 동작 및 0점 동작 가져오기
-        self.reference_motion_preprocessed = self.load_reference_move(score_category="reference") # 모범 동작
-        self.zero_score_motion_preprocessed = self.load_reference_move(score_category="zero_score") # 0점 동작
-
-        print("평가 준비 완료")
+        # 모델에서 모범 동작만 가져오도록 수정
+        self.reference_motion_preprocessed = self.load_reference_move(score_category="reference")
     
-    # db에서 모범 동작 데이터를 불러와서 전처리된 numpy 배열 리스트로 반환하는 메서드
+    # db로부터 모범 동작 데이터를 불러와서 전처리된 numpy 배열 리스트로 반환하는 메서드
     def load_reference_move(self, score_category):
-        # 특정 모범 동작 이름과 카테고리가 reference인 것만 가져오기
         reference_records = MotionRecording.objects.filter(
             motion_type__motion_name=self.reference_motion_name,
             score_category=score_category
         )
-
-        # 전처리된 센서값을 받을 배열
         preprocessed_motion = []
-
         for record in reference_records:
-            numpy_data = record.get_sensor_data_numpy()
+            numpy_data = record.get_sensor_data_to_numpy()
             if numpy_data.size > 0:
                 preprocessed_motion.append(numpy_data)
-        
         return preprocessed_motion
     
     # 사용자의 데이터를 전처리하는 메서드
     def preprocess_user_data(self, user_raw_data):
         return preprocess_sensor_data(user_raw_data)
 
-    # 0점 동작을 기반으로 dtw의 최대 거리를 계산하는 메서드
-    def calculate_max_dtw(self):
-        max_distances = []
-
-        # 각 모범 동작과 각 0점 동작 사이의 dtw 거리를 계산
-        for ref_motion in self.reference_motion_preprocessed:
-            for zero_score in self.zero_score_motion_preprocessed:
-                try:
-                    distance = dtw_ndim.distance(ref_motion, zero_score, window=10)
-                    max_distances.append(distance)
-                except Exception as e:
-                    print(f"최대 dtw 계산 중 오류 발생: {e}")
-                    continue
-        
-        if max_distances:
-            # 각 계산된 거리가 담겨있는 배열 중 가장 큰 값을 반환
-            return max(max_distances)
-        else:
-            print("계산된 dtw 거리가 없습니다. 기본값 1000을 반환합니다.")
-            return 1000
-
     # 사용자의 동작을 실제로 평가하는 메인 함수
-    def evaluator_user_motion(self, user_raw_data):
+    def evaluator_user_motion(self, user_raw_data, max_dtw_distance: float):
         # 사용자의 원본 데이터(user_raw_data_df) 전처리
         preprocessed_user_data = self.preprocess_user_data(user_raw_data)
 
-        # 해당 동작 유형의 모범 동작 데이터가 없는 경우
         if not self.reference_motion_preprocessed:
             return {"error": "모범 동작 데이터가 없습니다ㅜㅠ"}
 
-        # 가장 작은 dtw 거리(가장 비슷한 구간)를 찾기 위한 초기값 셋팅
-        min_dtw_distance = float("inf") # 무한대를 의미하는 가장 큰 숫자
-
         dtw_distances = []
-
-        # 저장된 모든 모범 동작과 사용자의 동작을 하나씩 비교
         for ref_data in self.reference_motion_preprocessed:
             try:
-                # dtw 라이브러리를 사용하여 두 동작의 다름 정도를 계산
-                # window: dtw가 비교할 때 시간적으로 너무 멀어진 데이터끼리 억지로 맞추지 않도록 제한
                 dtw_distance = dtw_ndim.distance(preprocessed_user_data, ref_data, window=10)
                 dtw_distances.append(dtw_distance)
             except Exception as e:
-                print("dtw 거리 계산 중 오류 발생")
+                print(f"dtw 거리 계산 중 오류 발생: {e}")
                 continue
 
-        # dtw 거리를 0~100% 정확도 점수로 바꾸기
-        accuracy_percentage = 0.0 # 초기 정확도 0%
+        if not dtw_distances:
+            return {"error": "모든 모범 동작과 비교 중 오류가 발생하여 dtw 거리를 계산할 수 없습니다."}
 
-        # 유효한 dtw 거리가 계산된 경우
-        if dtw_distance:
-            # 모든 모범 동작과의 평균 거리를 계산
-            average_dtw_distance = sum(dtw_distances) / len(dtw_distances)
+        average_dtw_distance = sum(dtw_distances) / len(dtw_distances)
 
-            # 거리를 0 ~ max_distance 범위로 정규화
-            # min을 통해 정규화된 거리가 1.0을 초과하지 않도록 함
-            normalized_distance = min(average_dtw_distance / self.calculate_max_dtw(), 1.0)
+        # 정규화 시, 외부에서 받은 max_dtw_distance 값을 사용
+        if max_dtw_distance <= 0:
+            # 0으로 나누는 것을 방지
+            return {"error": "max_dtw_distance가 0보다 커야 합니다."}
+        
+        normalized_distance = min(average_dtw_distance / max_dtw_distance, 1.0)
 
-            # 정확도 = 100 - (정규화된 거리 * 100)
-            # ex) 정규화된 거리가 0.1이면 100 - 10 = 90!
+        accuracy_percentage = max(0, (1 - normalized_distance)) * 100
+        accuracy_percentage = min(100, accuracy_percentage)
 
-            # max: 음수 방지
-            accuracy_percentage = max(0, (1 - normalized_distance)) * 100
-
-            # min: 100초과 방지
-            accuracy_percentage = min(100, accuracy_percentage)
-
-            return {
-                "evaluator_motion_name": self.reference_motion_name,
-                "score": accuracy_percentage,
-            }
-        else:
-            return {"error": "좋버그!!!!!!!"}
+        return {
+            "evaluator_motion_name": self.reference_motion_name,
+            "score": accuracy_percentage,
+            "avg_dtw_distance": average_dtw_distance, # 디버깅 및 분석을 위해 추가 정보 반환
+            "normalized_distance": normalized_distance,
+        }
         
 if __name__ == "__main__":
     print("센서 데이터 기반 평가 시스템 시작")

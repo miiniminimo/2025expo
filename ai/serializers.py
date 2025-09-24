@@ -1,9 +1,31 @@
 # ai/serializers.py
 
 from rest_framework import serializers
-from .models import UserRecording, MotionRecording, MotionType
+# SensorDevice 모델을 추가로 임포트
+from .models import UserRecording, MotionRecording, MotionType, SensorDevice
 
-# --- 신규: 단순화된 평가 요청 Serializer ---
+
+# --- 신규: MotionType 관리를 위한 Serializer ---
+class MotionTypeSerializer(serializers.ModelSerializer):
+    motionType = serializers.CharField(source='motion_name', max_length=100)
+
+    class Meta:
+        model = MotionType
+        fields = ['id', 'motionType', 'description', 'max_dtw_distance']
+        read_only_fields = ['id', 'max_dtw_distance']
+
+
+# --- 신규: SensorDevice 관리를 위한 Serializer ---
+class SensorDeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SensorDevice
+        # API를 통해 다룰 필드 목록
+        fields = ['id', 'company', 'device_uid', 'name', 'api_key', 'is_active', 'created_at']
+        # 서버에서 자동으로 생성/결정되어야 하므로, 클라이언트가 직접 쓸 수 없는 필드
+        read_only_fields = ['id', 'company', 'api_key', 'created_at']
+
+
+# --- 기존 Serializer들 ---
 
 class EvaluationRequestSerializer(serializers.Serializer):
     """Unity로부터 평가 요청을 받을 때의 전체 데이터 형식"""
@@ -12,16 +34,17 @@ class EvaluationRequestSerializer(serializers.Serializer):
     # sensorData가 '딕셔셔너리들의 리스트' 형태인지만 검증.
     sensorData = serializers.ListField(child=serializers.DictField())
 
-# --- 기존 Serializer들 --- 
 
 class UserRecordingSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserRecording
-        fields = ["id", "user", "motion_type", "score", "sensor_data_json", "recorded_at"]
+        fields = ["id", "user", "motion_type", "score", "recorded_at"]
+        # sensor_data_json은 용량이 크므로, 목록 조회 시에는 제외하는 것이 좋음
+        # 상세 조회 시 별도로 내려주거나, 다른 Serializer를 만드는 것을 고려
         read_only_fields = ["id", "recorded_at"]
 
 class MotionSerializer(serializers.ModelSerializer):
-    motionTypeName = serializers.SlugRelatedField(source="motion_type",
+    motionName = serializers.SlugRelatedField(source="motion_type",
                                                   slug_field="motion_name",
                                                   queryset=MotionType.objects.all(),
                                                   write_only=True)
@@ -37,7 +60,7 @@ class MotionSerializer(serializers.ModelSerializer):
         model = MotionRecording
         fields = [
             "id",
-            "motionTypeName",
+            "motionName", # motionTypeName -> motionName 으로 수정
             "scoreCategory",
             "sensorData",
             "data_frames",

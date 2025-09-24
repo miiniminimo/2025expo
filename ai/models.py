@@ -14,7 +14,8 @@ class SensorDevice(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="sensor_devices")
     device_uid = models.CharField(max_length=120)
     name = models.CharField(max_length=200, blank=True)
-    api_key = models.CharField(max_length=64, unique=True, db_index=True)
+    # blank=True: 관리자가 이 필드를 비워두고 저장해도, 아래 save() 메서드에서 자동으로 채워줌
+    api_key = models.CharField(max_length=64, unique=True, db_index=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -26,6 +27,12 @@ class SensorDevice(models.Model):
 
     def __str__(self):
         return f"[{self.company.name}] {self.device_uid}"
+
+    def save(self, *args, **kwargs):
+        # api_key가 없는 새로운 디바이스라면, 고유한 키를 생성해준다.
+        if not self.api_key:
+            self.api_key = self.generate_api_key()
+        super().save(*args, **kwargs)
 
     @staticmethod
     def generate_api_key() -> str:
@@ -46,7 +53,7 @@ class MotionType(models.Model):
 
 class MotionRecording(models.Model):
     """
-    모범(reference) 또는 0점(zero_score) 동작의 실제 센서 데이터를 저장하는 '데이터 원본 창고'.
+    모범(reference) 또는 0점(zero_score) 동작의 실제 센서 데이터를 저장하는 데이터 원본 창고
     """
     motion_type = models.ForeignKey(MotionType, on_delete=models.CASCADE, related_name="recordings")
     recorded_at = models.DateTimeField(auto_now_add=True)
@@ -54,12 +61,13 @@ class MotionRecording(models.Model):
     score_category = models.CharField(max_length=20, choices=[("reference", "모범 동작"), ("zero_score", "0점 동작")])
     sensor_data_json = models.JSONField()
 
-    def get_sensor_data_numpy(self):
+    # json 형태의 원본 센서 데이터를 numpy 배열 형식의 데이터로 반환
+    def get_sensor_data_to_numpy(self):
         import numpy as np
         import pandas as pd
         if self.sensor_data_json:
             df = pd.DataFrame(self.sensor_data_json)
-            return df.values
+            return df.values # dataframe to numpy
         return np.array([])
 
 # 사용자 평가 결과 저장 모델
