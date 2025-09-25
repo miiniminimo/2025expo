@@ -61,13 +61,12 @@ class MotionRecording(models.Model):
     score_category = models.CharField(max_length=20, choices=[("reference", "모범 동작"), ("zero_score", "0점 동작")])
     sensor_data_json = models.JSONField()
 
-    # json 형태의 원본 센서 데이터를 numpy 배열 형식의 데이터로 반환
+    # numpy 형태의 원본 센서 데이터(json 문자열)를 numpy 배열 형식의 데이터로 반환
     def get_sensor_data_to_numpy(self):
         import numpy as np
-        import pandas as pd
+
         if self.sensor_data_json:
-            df = pd.DataFrame(self.sensor_data_json)
-            return df.values # dataframe to numpy
+            return np.array(self.sensor_data_json)
         return np.array([])
 
 # 사용자 평가 결과 저장 모델
@@ -75,10 +74,11 @@ class UserRecording(models.Model):
     """
     사용자의 최종 평가 결과를 기록.
     """
-    # 개선 사항: user 필드를 Django 기본 User가 아닌 Employee 모델로 변경
     user = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="motion_recordings")
     motion_type = models.ForeignKey(MotionType, on_delete=models.CASCADE)
     score = models.FloatField()
+    # 사용자가 평가받은 원본 센서 데이터 (그래프 재현 및 분석용)
+    sensor_data_json = models.JSONField(null=True) 
     recorded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

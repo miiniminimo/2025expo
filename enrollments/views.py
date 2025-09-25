@@ -3,17 +3,20 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status, serializers
+from rest_framework.decorators import action
 
 from organizations.views import IsCompanySession
 from organizations.models import Employee
 from .models import Enrollment
 from .serializers import EnrollmentSerializer, EnrollmentDetailSerializer
+from ai.logic import get_evaluation_graph_data
 
 class EnrollmentViewSet(ModelViewSet):
     """
     수강(Enrollment) 정보를 관리하는 API
     - GET /api/enrollments/
     - POST /api/enrollments/
+    - GET /api/enrollments/{id}/latest-evaluation-graph/
     """
     queryset = Enrollment.objects.all()
     permission_classes = [IsCompanySession]
@@ -34,9 +37,18 @@ class EnrollmentViewSet(ModelViewSet):
         company_id = self.request.session.get("company_id")
         employee_id = serializer.validated_data.get('employee').id
 
-        # 우리 회사 소속의 직원이 맞는지 확인
         if not Employee.objects.filter(id=employee_id, company_id=company_id).exists():
-            # 추후에 403 에러로 바꿀 것
             raise serializers.ValidationError({"employee": "해당 직원은 귀사의 소속이 아닙니다."})
 
         serializer.save()
+
+    @action(detail=True, methods=['get'], url_path='latest-evaluation-graph')
+    def latest_evaluation_graph(self, request, pk=None):
+        """ 가장 최근의 평가 기록을 그래프용 데이터로 가공하여 반환 """
+        enrollment = self.get_object()
+        graph_data = get_evaluation_graph_data(enrollment.id)
+
+        if "error" in graph_data:
+            return Response(graph_data, status=status.HTTP_404_NOT_FOUND)
+        
+        return Response(graph_data)
