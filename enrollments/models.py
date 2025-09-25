@@ -11,7 +11,7 @@ class Enrollment(models.Model):
 
     id = models.BigAutoField(primary_key=True)
     employee = models.ForeignKey("organizations.Employee", on_delete=models.CASCADE, related_name="enrollments")
-    course   = models.ForeignKey("courses.Course", on_delete=models.CASCADE, related_name="enrollments")
+    course = models.ForeignKey("courses.Course", on_delete=models.CASCADE, related_name="enrollments")
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.NOT_TAKEN, db_index=True)
     completion_rate = models.PositiveSmallIntegerField(default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)]

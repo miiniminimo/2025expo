@@ -7,3 +7,6 @@ venv/
 
 # 가상환경 실행 파일
 activate.bat
+
+
+__pycache__/

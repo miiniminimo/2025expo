@@ -57,4 +57,3 @@ class Employee(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["company", "emp_no"], name="uq_employee_company_empno")
         ]
-
